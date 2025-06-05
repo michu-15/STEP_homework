@@ -18,7 +18,7 @@ def calculate_hash(key):
     # Note: This is not a good hash function. Do you see why?
     hash = 0
     for i in key:
-        hash = hash * 128 + ord(i)    #Update Hash
+        hash = hash * 131 + ord(i)    #Update Hash
     return hash
 
 
