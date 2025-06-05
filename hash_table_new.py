@@ -99,9 +99,6 @@ class HashTable:
     #               otherwise.
     def delete(self, key):
         assert type(key) == str
-        #------------------------#
-        # Write your code here!  #
-        #------------------------#
         self.check_size()
         bucket_index = calculate_hash(key) % self.bucket_size
         item = self.buckets[bucket_index]
@@ -135,12 +132,12 @@ class HashTable:
         assert (self.bucket_size < 100 or
                 self.item_count >= self.bucket_size * 0.3)
 
-    # TODO: Add comment
+    # 再ハッシュの条件
     def rehash_if_needed(self):
         if self.bucket_size < 100:
             return 
         if self.item_count > self.bucket_size * 0.7:
-            self.rehash(self.bucket_size * 2 + 1)
+            self.rehash(self.bucket_size * 2 + 1)   #奇数に限定
         elif self.item_count < self.bucket_size * 0.3:
             new_size = self.bucket_size // 2
             if new_size % 2 == 0:
@@ -151,9 +148,9 @@ class HashTable:
     def rehash(self, new_size):
         old_buckets = self.buckets
         self.bucket_size = new_size
-        self.buckets = [None] * self.bucket_size  #新らしいなにもないハッシュテーブル　
+        self.buckets = [None] * self.bucket_size  #新しいなにもないハッシュテーブル　
         self.item_count = 0
-	 # Move items from old_buckets to buckets.
+	 # 古いバケットから新しいバケットに移動
         for item in old_buckets:
             while item:
                 bucket_index = calculate_hash(item.key) % new_size
