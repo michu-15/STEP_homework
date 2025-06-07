@@ -138,6 +138,8 @@ class HashTable:
             return 
         if self.item_count > self.bucket_size * 0.7:
             self.rehash(self.bucket_size * 2 + 1)   #奇数に限定
+	elif self.bucket_size < 100:
+	    return
         elif self.item_count < self.bucket_size * 0.3:
             new_size = self.bucket_size // 2
             if new_size % 2 == 0:
