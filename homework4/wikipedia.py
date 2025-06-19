@@ -87,37 +87,91 @@ class Wikipedia:
             return []
         return [self.titles[n_id] for n_id in self.links.get(id, [])]
 
-    #宿題１ 
-    def find_shortest_path(self, start, goal):
-        queue = deque()
-        queue.append((start,[start]))
-        visited = {}
-        answers = []     #最短の経路がいくつかある時にそれらを保存するリスト
-        min_lenth = None #最短かどうかを確認するため
-        
-        while queue:
-            current, path = queue.popleft()
-            #goalのノードに当たった時、それが最短なのかを確認
-            if current == goal:
-                if min_lenth is None:
-                    answers.append(path)
-                    min_lenth = len(path)
-                elif min_lenth == len(path):  #最短経路がいくつかある時
-                    answers.append(path)
-                continue
 
-            #goalにあたっていなくてもすでに最短経路が見つかっていればそれ以降は探索不要
-            if min_lenth is not None and len(path) > min_lenth:
-                continue
+    #宿題１ (一個だけでも見つかったらいい時)
+    def build_path_one(self, goal, previous_node):
+        path = []
+        current = goal
+        while current is not None:
+            path.append(current) #逆順で辿って入れていく
+            current = previous_node.get(current)
+        path.reverse()  # スタート→ゴールにするため逆順に
+        return path 
+
+
+    def find_shortest_path_just_one(self, start, goal):
+        queue = deque([start])
+        visited = set()
+        visited.add(start)
+        previous_node = {}
+        previous_node[start] = None
+
+        while queue:
+            current = queue.popleft()
+
+            if current == goal:
+                ans = self.build_path_one(goal, previous_node)
+                return ans
+
+            for neighbor in self.get_neighbors(current):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    previous_node[neighbor] = current
+                    queue.append(neighbor)
+        return None
+#テスト用
+# wikipedia = Wikipedia('wikipedia_dataset/pages_small.txt', 'wikipedia_dataset/links_small.txt')
+#wikipedia = Wikipedia('wikipedia_dataset/pages_medium.txt', 'wikipedia_dataset/links_medium.txt')
+#wikipedia = Wikipedia('wikipedia_dataset/pages_large.txt', 'wikipedia_dataset/links_large.txt')
+# a = wikipedia.find_shortest_path_just_one('A', 'E')
+# a = wikipedia.find_shortest_path_just_one('渋谷', '小野妹子')
+# print(a)
+
+
+    #宿題１ (同じ深さで複数経路全部見つけたい時)
+    def build_paths(self, current, previous_nodes, path, all_paths):
+        #curentがstartになった時終わり
+        if not previous_nodes[current]:
+            all_paths.append([current] + path) #前に結果をたしていくことで、最後反転の手間を省く
+            return
+        #再起的に辿っていく
+        for prev in previous_nodes[current]:
+            self.build_paths(prev, previous_nodes, [current] + path, all_paths)
+
+    def find_shortest_paths(self, start, goal):
+        queue = deque()
+        queue.append(start)
+        visited_and_depth = {start:0}
+        previous_nodes = defaultdict(list)
+        previous_nodes[start] = []
+        all_paths = []
+
+        while queue:
+            current = queue.popleft()
+            
+            if current == goal:
+                self.build_paths(current, previous_nodes, [] , all_paths)
+                return all_paths
             
             #次に行ける先を一個ずつみていく
             for neighbor in self.get_neighbors(current):
-                new_distance = len(path)
-                if (neighbor not in visited) or (new_distance <= visited[neighbor]):
-                    visited[neighbor] = new_distance
-                    queue.append((neighbor, path + [neighbor]))
+                next_depth = visited_and_depth[current] + 1
+                #初めてのノードにであった時
+                if neighbor not in visited_and_depth:
+                    visited_and_depth[neighbor] = visited_and_depth[current] + 1
+                    previous_nodes[neighbor].append(current)
+                    queue.append(neighbor)
+                #初めてではないが最短距離が同じ時
+                elif visited_and_depth[neighbor] == next_depth:
+                    previous_nodes[neighbor].append(current)
 
-        return answers   #時間計算量はN+M　経路を全て保存しているのがよくない
+#テスト用
+# wikipedia = Wikipedia('wikipedia_dataset/pages_small.txt', 'wikipedia_dataset/links_small.txt')
+#wikipedia = Wikipedia('wikipedia_dataset/pages_medium.txt', 'wikipedia_dataset/links_medium.txt')
+#wikipedia = Wikipedia('wikipedia_dataset/pages_large.txt', 'wikipedia_dataset/links_large.txt')
+# a = wikipedia.find_shortest_paths('A', 'E')
+# a = wikipedia.find_shortest_path_just_one('渋谷', '小野妹子')
+# print(a)
 
     # Homework #2: Calculate the page ranks and print the most popular pages.
 
@@ -189,8 +243,6 @@ class Wikipedia:
         pass
 
 
-
-
     # Helper function for Homework #3:
     # Please use this function to check if the found path is well formed.
     # 'path': An array of page IDs that stores the found path.
@@ -224,9 +276,8 @@ if __name__ == "__main__":
     # Example
     wikipedia.find_most_linked_pages()
     # Homework #1
-    wikipedia.find_shortest_path("渋谷", "パレートの法則")
+    wikipedia.find_shortest_paths("渋谷", "パレートの法則")
     # Homework #2
     wikipedia.find_most_popular_pages()
     # Homework #3 (optional)
     wikipedia.find_longest_path("渋谷", "池袋")
-
