@@ -36,7 +36,7 @@
   ` ['渋谷', 'マクドナルド', 'Twitter', 'パレートの法則']`
 
  
-# 宿題2 Homework1
+# 宿題2 Homework2
   **small**
 
     Iteration 3: total rank sum = 6.000000
@@ -89,5 +89,5 @@
     SUDOC_(識別子) (score: 1518.7878)
 
 
-# 宿題3
+# 宿題3 Homework3
    doing
