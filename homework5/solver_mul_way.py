@@ -33,7 +33,7 @@ def greedy(cities,dist):
     return tour
 
 #2-opt法
-def two_opt(tour, cities, dist):
+def two_opt(tour, dist):
     N =len(tour)
     #実行が終わらなかったのでループ回数の制限
     count = 0
@@ -68,10 +68,24 @@ def solve(cities):
     #始めに貪欲法で繋ぐ
     tour = greedy(cities, dist)
     #2-optで改善
-    tour = two_opt(tour, cities, dist)
+    tour = two_opt(tour, dist)
     return tour
 
-
+#全体の距離計算
+def total_distance(tour, dist):
+    total = 0
+    n = len(tour)
+    for i in range(n):
+        start_city = tour[i]
+        
+        if i == n - 1:
+            goal_city = tour[0] # 最後の都市のときだけ、スタート地点に戻る
+        else:
+            goal_city = tour[i + 1]
+        
+        total += dist[start_city][goal_city]
+    
+    return total
 
 
 if __name__ == '__main__':
@@ -79,3 +93,5 @@ if __name__ == '__main__':
     assert len(sys.argv) > 1
     tour = solve(read_input(sys.argv[1]))
     print_tour(tour)
+    dist = distance_matrix(read_input(sys.argv[1]))
+    print(f"Total distance: {total_distance(tour, dist)}")
