@@ -24,6 +24,7 @@ void munmap_to_system(void *ptr, size_t size);
 //
 // Struct definitions
 //
+#define BINS_NUM 4
 
 typedef struct my_metadata_t {
   size_t size;
@@ -31,10 +32,11 @@ typedef struct my_metadata_t {
 } my_metadata_t;
 
 typedef struct my_heap_t {
-  my_metadata_t *bins[4];   //4つのbinの先頭アドレス
-  /*my_metadata_t dummy;  Free binならダミーいらない？*/
+  my_metadata_t *free_head;   //4つのbinの先頭アドレス
+  my_metadata_t dummy;  
 } my_heap_t;
 
+my_heap_t heaps[BINS_NUM];
 //
 // Static variables (DO NOT ADD ANOTHER STATIC VARIABLES!)
 //
@@ -44,17 +46,15 @@ my_heap_t my_heap;
 // Helper functions (feel free to add/remove/edit!)
 //
 //空きリストの先頭に挿入する関数
-void my_add_to_free_list(my_metadata_t *metadata) {
-  // assert(metadata != NULL);
-  assert(!metadata->next);
-  // assert(metadata->size >= 16);
-  int insert_bin_num  = metadata->size / 1000; /*どのbinに入れるべきか確認*/
-  if (insert_bin_num >= 4){
-    insert_bin_num = 3; /*sizeが4000以上のものは最後のbin[3]に全部入れる*/
+void my_add_to_free_list(my_metadata_t *metadata, int bin_index) {
+  assert(metadata && !metadata->next);
+  int insert_bin_num  = (metadata->size - 1) / 1000; /*どのbinに入れるべきか確認*/
+  if (insert_bin_num >= BINS_NUM){
+    insert_bin_num = BINS_NUM - 1; /*sizeが4000以上のものは最後のbin[3]に全部入れる*/
   }
 
-  metadata->next = my_heap.bins[insert_bin_num];    /*入るbinの先頭を今のnextに*/
-  my_heap.bins[insert_bin_num] = metadata;  /*先頭を新しくフリーリストに追加したものに*/
+  metadata->next = heaps[insert_bin_num].free_head;    /*入るbinの先頭を今のnextに*/
+  heaps[insert_bin_num].free_head = metadata;  /*先頭を新しくフリーリストに追加したものに*/
 
 }
 
@@ -63,7 +63,7 @@ void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev, int 
   if (prev){
     prev->next = metadata->next;
   }else{
-    my_heap.bins[bin_index] = metadata->next;
+    heaps[bin_index].free_head = metadata->next;
   }
   metadata->next = NULL;
 }
@@ -74,8 +74,10 @@ void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev, int 
 
 // This is called at the beginning of each challenge.
 void my_initialize() {
-  for (int i = 0; i < 4; ++i){
-    my_heap.bins[i] = NULL;     //それぞれのbinの先頭にNULLをおく
+  for (int i = 0; i < BINS_NUM; ++i) {
+    heaps[i].dummy.size = 0;
+    heaps[i].dummy.next = NULL;
+    heaps[i].free_head = &heaps[i].dummy;  /*dummy を free list の先頭に*/
   }
 }
 
@@ -83,8 +85,8 @@ void my_initialize() {
 // |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
 // 4000. You are not allowed to use any library functions other than
 // mmap_from_system() / munmap_to_system().
-void *my_malloc(size_t size) {
-  size = (size + 7) & ~7;
+void *my_malloc(size_t size, int bin_index) {
+  
   //Free list bin　
   //四つに分けているのでどのbinにあるか探す
   
@@ -94,7 +96,7 @@ void *my_malloc(size_t size) {
   int match_bin_index = -1; /*最小のフリースペースがどのbinにあるか*/
 
   for (int i = bin_num; i < 4; ++i){  /*want_sizeのbinからその上のbinまでを確認*/
-    metadata = my_heap.bins[i];  /*先頭を設定*/
+    metadata = heaps[i];  /*先頭を設定*/
     
 
     size_t min_size = 4096;  /*初めは一番大きいメモリを設定*/
@@ -137,7 +139,7 @@ void *my_malloc(size_t size) {
     metadata->size = buffer_size - sizeof(my_metadata_t);
     metadata->next = NULL;
     // Add the memory region to the free list.
-    my_add_to_free_list(metadata);
+    my_add_to_free_list(metadata, size);
     // Now, try my_malloc() again. This should succeed.
     return my_malloc(size);
   }
@@ -167,7 +169,7 @@ void *my_malloc(size_t size) {
     new_metadata->size = remaining_size - sizeof(my_metadata_t);
     new_metadata->next = NULL;
     // 残ったフリー部分をフリーリストに入れ直す
-    my_add_to_free_list(new_metadata);
+    my_add_to_free_list(new_metadata, match_bin_index);
     metadata->size = size;
   
   }
@@ -191,9 +193,6 @@ void my_free(void *ptr) {
 // This is called at the end of each challenge.
 void my_finalize() {
 
-  // for (int i = 0; i < 4; ++i) {
-  //   my_heap.bins[i] = NULL;
-  // }
 }
 
 void test() {
