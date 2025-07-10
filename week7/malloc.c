@@ -83,7 +83,7 @@ void my_initialize() {
 // 各binごとのmallocの処理を行う　ー＞　forやifの節約
 
 void *my_malloc_on_bin(size_t size, int bin_index) {
-  
+  // printf("[INFO] Called my_malloc_on_bin: size=%zu, bin_index=%d\n", size, bin_index);
   my_metadata_t *prev = &heaps[bin_index].dummy;
   my_metadata_t *metadata = prev->next;  /*先頭を設定*/
 
@@ -134,7 +134,7 @@ void *my_malloc_on_bin(size_t size, int bin_index) {
     // Add the memory region to the free list.
     int new_bin_index = get_bin_index(metadata->size);
     my_add_to_free_list(metadata, new_bin_index);
-    // Now, try my_malloc() again. This should succeed.
+    
     return my_malloc_on_bin(size, bin_index);
   }
   // フリースロットからの削除
