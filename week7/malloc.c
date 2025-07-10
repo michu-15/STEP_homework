@@ -114,7 +114,7 @@ void *my_malloc_on_bin(size_t size, int bin_index) {
     }
 
     if (min_metadata){  /*今見てるbinで欲しいサイズのものが一つでもあったとき*/
-      int match_bin_index = i;
+      match_bin_index = i;
       prev = min_prev;
       metadata = min_metadata;
       break; /*そのbinで最小なら次のbinは見なくていい*/
