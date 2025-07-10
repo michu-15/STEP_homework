@@ -46,30 +46,22 @@ my_heap_t my_heap;
 //空きリストの先頭に挿入する関数
 void my_add_to_free_list(my_metadata_t *metadata) {
   assert(!metadata->next);
-  
-  size_t size = metadata->size;
-  for  (int i = 0; i < 4; ++i){     /*どのbinのサイズに当たるか確認*/
-   if(bins[i]  = i*1000 <= size && size < (i + 1) * 1000){
-    metadata->next = my_heap.bins[i];    /*今のbin[i]の先頭をmetadataの次に*/
-    my_heap.bins[i] = metadata;  /*先頭を今解放したものに*/
-    break;  /*上の処理が終われば以降のbinは見る必要なし*/
-   }  
-  }
+  int new_size = metadata->size;
+  int insert_bin_num  = new_size / 1000;
+
+  metadata->next = my_heap.bins[new_size];    /*今のbin[i]の先頭をmetadataの次に*/
+  my_heap.bins[new_size] = metadata;  /*先頭を今解放したものに*/
+
 }
 
-void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
-  size_t size = metadata->size;
-  for  (int i = 0; i < 4; ++i){     /*どのbinのサイズに当たるか確認*/
-    if(bins[i]  = i*1000 <= size && size < (i + 1) * 1){
-      if (prev){
-        prev->next = metadata->next; /*連結の該当箇所を一個飛ばしで削除*/
-      } else {
-        my_heap.bins[i] = metadata->next;   /*先頭をネクスト（NULLに）*/
-      }
-      metadata->next = NULL;
-      break;  /*上の処理が終われば以降のbinは見る必要なし*/
-      }
-    }
+
+void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev, int bin_index) { /*解放するメモリがどのbinにあったかを引数で与える*/
+  if (prev){
+    prev->next = metadata->next;
+  }else{
+    my_heap.bins[bin_index] = metadata->next;
+  }
+  metadata->next = NULL;
 }
 
 //
@@ -81,11 +73,6 @@ void my_initialize() {
   for (int i = 0; i < 4; ++i){
     my_heap.bins[i] = NULL;     //それぞれのbinの先頭にNULLをおく
   }
-  /* ダミーは今回いらない？
-  my_heap = &my_heap.dummy;
-  my_heap.dummy.size = 0;
-  my_heap.dummy.next = NULL;
-  */
 }
 
 // my_malloc() is called every time an object is allocated.
@@ -97,16 +84,18 @@ void *my_malloc(size_t size) {
   //四つに分けているのでどのbinにあるか探す
   
   int bin_num = size / 1000;     /*どのbinにあるか*/
+  my_metadata_t *metadata = NULL;  /*先頭を設定*/
+  my_metadata_t *prev = NULL;
+  int match_bin_index = -1; /*最小のフリースペースがどのbinにあるか*/
 
-  
   for (int i = bin_num; i < 4; ++i){  /*want_sizeのbinからその上のbinまでを確認*/
+    metadata = my_heap.bins[i];  /*先頭を設定*/
     
-    my_metadata_t *metadata = my_heap.bins[i];  /*先頭を設定*/
-    my_metadata_t *prev = NULL;
 
     size_t min_size = 4096;  /*初めは一番大きいメモリを設定*/
     my_metadata_t *min_metadata = NULL; /*最小部分の先頭のポインタ*/
     my_metadata_t *min_prev = NULL; /*上の一個前のノード*/
+    
 
     while (metadata && metadata->size < size) {
       /*Best-fitの実装*/
@@ -117,17 +106,19 @@ void *my_malloc(size_t size) {
       }
       prev = metadata;
       metadata = metadata->next; 
+    }
 
     if (min_metadata != NULL){  /*今見てるbinで欲しいサイズのものが一つでもあったとき*/
+      match_bin_index = i;
       prev = min_prev;
       metadata = min_metadata;
       break; /*そのbinで最小なら次のbinは見なくていい*/
     }
-      
+  }
   // now, metadata points to the first free slot
   // and prev is the previous entry.
 
-  if (!min_metadata) {
+  if (!metadata) {
     // There was no free slot available. We need to request a new memory region
     // from the system by calling mmap_from_system().
     //
@@ -145,7 +136,7 @@ void *my_malloc(size_t size) {
     // Now, try my_malloc() again. This should succeed.
     return my_malloc(size);
   }
-
+  
   // |ptr| is the beginning of the allocated object.
   //
   // ... | metadata | object | ...
@@ -154,9 +145,10 @@ void *my_malloc(size_t size) {
   void *ptr = metadata + 1;
   size_t remaining_size = metadata->size - size;
   metadata->size = size;
-  // Remove the free slot from the free list.
-  my_remove_from_free_list(metadata, prev);
-
+  // フリーなリストからmallocしたものを消す
+  if(metadata && match_bin_index != -1){   /*該当するmetadataがなかったときは以下の操作はいらない*/ 
+    my_remove_from_free_list(metadata, prev, match_bin_index);
+  }
   if (remaining_size > sizeof(my_metadata_t)) {
     // Create a new metadata for the remaining free slot.
     //
@@ -168,7 +160,7 @@ void *my_malloc(size_t size) {
     my_metadata_t *new_metadata = (my_metadata_t *)((char *)ptr + size);
     new_metadata->size = remaining_size - sizeof(my_metadata_t);
     new_metadata->next = NULL;
-    // Add the remaining free slot to the free list.
+    // 残ったフリー部分をフリーリストに入れ直す
     my_add_to_free_list(new_metadata);
   }
   return ptr;
