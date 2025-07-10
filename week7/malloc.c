@@ -53,20 +53,15 @@ int get_bin_index(size_t size) {
 //空きリストの先頭に挿入する関数
 void my_add_to_free_list(my_metadata_t *metadata, int bin_index) {
   assert(metadata && !metadata->next);
-  if (bin_index >= BINS_NUM){
-    bin_index = BINS_NUM - 1; /*sizeが4000以上のものは最後のbin[3]に全部入れる*/
-  }
-
   metadata->next = heaps[bin_index].free_head;    /*入るbinの先頭を今のnextに*/
   heaps[bin_index].free_head = metadata;  /*先頭を新しくフリーリストに追加したものに*/
-
 }
 
-
+//空きリストから削除する関数
 void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev, int bin_index) { /*解放するメモリがどのbinにあったかを引数で与える*/
-  if (prev){
-    prev->next = metadata->next;
-  }else{
+  if (prev){  /*metadataの場所が中間*/
+    prev->next = metadata->next;  
+  }else{  /*metadataの場所が先頭*/
     heaps[bin_index].free_head = metadata->next;
   }
   metadata->next = NULL;
@@ -85,14 +80,14 @@ void my_initialize() {
   }
 }
 
-// my_malloc() is called every time an object is allocated.
-// |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
-// 4000. You are not allowed to use any library functions other than
-// mmap_from_system() / munmap_to_system().
+// 各binごとのmallocの処理を行う　ー＞　forやifの節約
+
 void *my_malloc_on_bin(size_t size, int bin_index) {
   
   my_metadata_t *prev = &heaps[bin_index].dummy;
   my_metadata_t *metadata = prev->next;  /*先頭を設定*/
+
+  // Best Fit用の初期設定　
   size_t min_size = 5000;  /*初めは一番大きいメモリを設定*/
   my_metadata_t *min_metadata = NULL; /*最小部分の先頭のポインタ*/
   my_metadata_t *min_prev = NULL; /*上の一個前のノード*/
@@ -115,8 +110,8 @@ void *my_malloc_on_bin(size_t size, int bin_index) {
 
     if (min_metadata){  /*今見てるbinで欲しいサイズのものが一つでもあったとき*/
       match_bin_index = i;
-      prev = min_prev;
-      metadata = min_metadata;
+      // prev = min_prev;
+      // metadata = min_metadata;
       break; /*そのbinで最小なら次のbinは見なくていい*/
     }
   }
@@ -143,7 +138,10 @@ void *my_malloc_on_bin(size_t size, int bin_index) {
     return my_malloc_on_bin(size, bin_index);
   }
   // フリースロットからの削除
-  my_remove_from_free_list(min_metadata, min_prev, match_bin_index);
+  metadata = min_metadata;
+  prev = min_prev;
+  my_remove_from_free_list(metadata, prev, match_bin_index);
+  metadata->size = size;
   
   // |ptr| is the beginning of the allocated object.
   //
@@ -174,6 +172,10 @@ void *my_malloc_on_bin(size_t size, int bin_index) {
   return ptr;
 }
 
+// my_malloc() is called every time an object is allocated.
+// |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
+// 4000. You are not allowed to use any library functions other than
+// mmap_from_system() / munmap_to_system().
 void *my_malloc(size_t size){
   int bin_index = get_bin_index(size);   //四つに分けているのでどのbinにあるか探す
   return my_malloc_on_bin(size, bin_index);
