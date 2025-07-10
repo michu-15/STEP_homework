@@ -1,5 +1,4 @@
 # malloc.File Description
-This repository contains implementations of custom memory allocators.
 
 malloc_3type_fit.c
 Implements First Fit, Best Fit, and Worst Fit.
