@@ -79,19 +79,19 @@ void *my_malloc(size_t size) {
   my_metadata_t *prev = NULL;
 
   // First-fit: Find the first free slot the object fits.
-  if(metadata && metadata->size < size){
-    prev = metadata;
-    metadata = metadata->next;
-  }
+  // if(metadata && metadata->size < size){
+  //   prev = metadata;
+  //   metadata = metadata->next;
+  // }
 
   //Best-fit
   //順番に見ていって一番小さいものだけを残して更新していく最後に小さかったものにいれる
-  size_t min_size = 4096;  /*初めは一番大きいメモリを設定*/
+  size_t min_size = 5000;  /*初めは一番大きいメモリを設定*/
   my_metadata_t *min_metadata = NULL; /*最小部分の先頭のポインタ*/
   my_metadata_t *min_prev = NULL; /*上の一個前のノード*/
-  while (metadata && metadata->size < size) {
+  while (metadata) {
     
-    if(metadata->size < min_size){
+    if(metadata->size > size && metadata->size < min_size){
       min_size = metadata->size;
       min_metadata = metadata;
       min_prev = prev;
@@ -104,21 +104,21 @@ void *my_malloc(size_t size) {
 
 
   //Worst-fit (Best-fitと考え方は同じ)
-  size_t max_size = 0;  /*一番小さいメモリを設定*/
-  my_metadata_t *max_metadata = NULL; /*最小部分の先頭のポインタ*/
-  my_metadata_t *max_prev = NULL; /*上の一個前のノード*/
-  while (metadata && metadata->size < size) {
+  // size_t max_size = 0;  /*一番小さいメモリを設定*/
+  // my_metadata_t *max_metadata = NULL; /*最小部分の先頭のポインタ*/
+  // my_metadata_t *max_prev = NULL; /*上の一個前のノード*/
+  // while (metadata) {
     
-    if(metadata->size > max_size){
-      max_size = metadata->size;
-      max_metadata = metadata;
-      max_prev = prev;
-    }
-    prev = metadata;
-    metadata = metadata->next;
-  }
-  prev = max_prev;
-  metadata = max_metadata;
+  //   if(metadata->size > size && metadata->size > max_size){
+  //     max_size = metadata->size;
+  //     max_metadata = metadata;
+  //     max_prev = prev;
+  //   }
+  //   prev = metadata;
+  //   metadata = metadata->next;
+  // }
+  // prev = max_prev;
+  // metadata = max_metadata;
 
 
 
