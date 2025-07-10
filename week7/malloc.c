@@ -43,18 +43,22 @@ my_heap_t heaps[BINS_NUM];
 my_heap_t my_heap;
 
 //
-// Helper functions (feel free to add/remove/edit!)
+// サイズがどのbinに入るかを教えてくれる補助関数
+int get_bin_index(size_t size) {
+  int bin = (size - 1) / 1000;
+  if (bin >= BINS_NUM) bin = BINS_NUM - 1;
+  return bin;
+}
 //
 //空きリストの先頭に挿入する関数
 void my_add_to_free_list(my_metadata_t *metadata, int bin_index) {
   assert(metadata && !metadata->next);
-  int insert_bin_num  = (metadata->size - 1) / 1000; /*どのbinに入れるべきか確認*/
-  if (insert_bin_num >= BINS_NUM){
-    insert_bin_num = BINS_NUM - 1; /*sizeが4000以上のものは最後のbin[3]に全部入れる*/
+  if (bin_index >= BINS_NUM){
+    bin_index = BINS_NUM - 1; /*sizeが4000以上のものは最後のbin[3]に全部入れる*/
   }
 
-  metadata->next = heaps[insert_bin_num].free_head;    /*入るbinの先頭を今のnextに*/
-  heaps[insert_bin_num].free_head = metadata;  /*先頭を新しくフリーリストに追加したものに*/
+  metadata->next = heaps[bin_index].free_head;    /*入るbinの先頭を今のnextに*/
+  heaps[bin_index].free_head = metadata;  /*先頭を新しくフリーリストに追加したものに*/
 
 }
 
@@ -85,24 +89,15 @@ void my_initialize() {
 // |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
 // 4000. You are not allowed to use any library functions other than
 // mmap_from_system() / munmap_to_system().
-void *my_malloc(size_t size, int bin_index) {
+void *my_malloc_on_bin(size_t size, int bin_index) {
   
-  //Free list bin　
-  //四つに分けているのでどのbinにあるか探す
-  
-  int bin_num = size / 1000;     /*どのbinにあるか*/
-  my_metadata_t *metadata = NULL;  /*先頭を設定*/
-  my_metadata_t *prev = NULL;
-  int match_bin_index = -1; /*最小のフリースペースがどのbinにあるか*/
+  my_metadata_t *prev = &heaps[bin_index].dummy;
+  my_metadata_t *metadata = prev->next;  /*先頭を設定*/
 
-  for (int i = bin_num; i < 4; ++i){  /*want_sizeのbinからその上のbinまでを確認*/
-    metadata = heaps[i];  /*先頭を設定*/
-    
-
-    size_t min_size = 4096;  /*初めは一番大きいメモリを設定*/
+  for (int i = bin_index; i < BINS_NUM; ++i){  /*want_sizeのbinからその上のbinまでを確認*/
+    size_t min_size = 5000;  /*初めは一番大きいメモリを設定*/
     my_metadata_t *min_metadata = NULL; /*最小部分の先頭のポインタ*/
     my_metadata_t *min_prev = NULL; /*上の一個前のノード*/
-    
 
     while (metadata && metadata->size < size) {
       /*Best-fitの実装*/
@@ -116,7 +111,7 @@ void *my_malloc(size_t size, int bin_index) {
     }
 
     if (min_metadata != NULL){  /*今見てるbinで欲しいサイズのものが一つでもあったとき*/
-      match_bin_index = i;
+      int match_bin_index = i;
       prev = min_prev;
       metadata = min_metadata;
       break; /*そのbinで最小なら次のbinは見なくていい*/
@@ -176,6 +171,10 @@ void *my_malloc(size_t size, int bin_index) {
   return ptr;
 }
 
+void *my_malloc(size_t size){
+  int bin_index = get_bin_index(size);   //四つに分けているのでどのbinにあるか探す
+  return my_malloc_on_bin(size, bin_index);
+}
 // This is called every time an object is freed.  You are not allowed to
 // use any library functions other than mmap_from_system / munmap_to_system.
 void my_free(void *ptr) {
